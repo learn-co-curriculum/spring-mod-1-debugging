@@ -35,140 +35,6 @@ Notice the project structure:
     │   ├── java
     │   │   └── com
     │   │       └── example
-    │   │           ├──controllers
-    │   │           │   └──  DebugController.java
-    │   │           └── springdebuggingdemo
-    │   │               └──  SpringDebuggingDemoApplication.java
-    │   └── resources
-    │       ├── application.properties
-    │       ├── static
-    │       └── templates
-    └── test
-        └── java
-            └── org
-                └── example
-                    └── springdebuggingdemo
-                        └── SpringDebuggingDemoApplicationTests.java
-```
-
-We might see the issue already just by looking at the project structure, but
-let us go through the process of debugging the application to see what happens.
-
-Go ahead and run the `SpringDebuggingDemoApplication` in debug mode. Notice that
-everything seems to start up okay:
-
-![debug-console](https://curriculum-content.s3.amazonaws.com/spring-mod-1/debugging/debug-spring-console.png)
-
-Before we move on, open up the `DebugController` class in the
-`com.example.controllers` package:
-
-```java
-package com.example.controllers;
-
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-@RestController
-public class DebugController {
-
-    @GetMapping("/")
-    public String index() {
-        return "Welcome to Spring Boot!";
-    }
-}
-```
-
-It looks like there is only one URL path we can request from our application.
-Open up Postman and enter in "http://localhost:8080/" in the request URL. Don't
-forget to select "GET" to send the GET request.
-
-![postman-404](https://curriculum-content.s3.amazonaws.com/spring-mod-1/debugging/postman-404.png)
-
-Uh-oh. It looks like we have an issue. We're getting a 404 error that it cannot
-find the path. We might also see that there is no stack trace error in the
-console log either.
-
-Let's look back at the controller class. Go ahead and set a breakpoint on line
-11 with `return "Welcome to Spring Boot";` to see if it is even entering the
-method. As a review, in order to set a breakpoint, click anywhere in the open
-space to the right of the line number in the editor window - a red dot will
-appear to indicate that you successfully set a breakpoint on that line.
-
-If we send the GET request again, we'll see we are still getting the same 404
-error. This tells us that it isn't even getting entering the method.
-
-Let's now take a look at the Java Visualizer to help us. In the "Debug" window,
-open up the "Actuator|Java Visualizer":
-
-![open-java-visualizer](https://curriculum-content.s3.amazonaws.com/spring-mod-1/debugging/open-java-visualizer.png)
-
-When we open the window, we can actually take a glimpse into the the application
-context of our Spring Boot project! Let's look at the beans we have defined in
-our context. Click on "application" under the "Beans" tab:
-
-![java-visualizer-beans](https://curriculum-content.s3.amazonaws.com/spring-mod-1/debugging/java-visualizer-beans.png)
-
-In this window, we can see all the beans defined in the application context
-listed in alphabetical order!
-
-Notice something missing?
-
-The `DebugController` isn't listed in the application context! Spring doesn't
-know that the `DebugController` class even exists!
-
-So what happened? Notice that our `SpringDebuggingDemoApplication` is in the
-package `com.example.springdebuggingdemo`. If we remember, the
-`@SpringBootApplication` is comprised of three different annotations:
-
-- `@EnableAutoConfiguration`
-- `@Configuration`
-- `@ComponentScan`
-
-Remember when we were defining the `@ComponentScan` annotation that if we do
-not specify the base package, then the default base package is the package where
-the `@ComponentScan` annotation is defined in then? In the main application
-class, we do not define a base package; therefore, it will only scan for
-components in the `com.example.springdebuggingdemo` package. And since our
-controller class is defined _outside_ that package, it will not be picked up to
-be scanned into the application context.
-
-To fix this, we need to either move the `controllers` package into the
-`springdebuggingdemo` package (which is preferred) or specify the base package
-like this:
-
-```java
-package com.example.springdebuggingdemo;
-
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-
-@EnableAutoConfiguration
-@Configuration
-@ComponentScan(basePackages = "com.example.controllers")
-public class SpringDebuggingDemoApplication {
-
-    public static void main(String[] args) {
-        SpringApplication.run(SpringDebuggingDemoApplication.class, args);
-    }
-
-}
-```
-
-Preferably, we'd just fix the project structure to be like this:
-
-```text
-├── HELP.md
-├── README.md
-├── mvnw
-├── mvnw.cmd
-├── pom.xml
-└── src
-    ├── main
-    │   ├── java
-    │   │   └── com
-    │   │       └── example
     │   │           └── springdebuggingdemo
     │   │               ├── SpringDebuggingDemoApplication.java
     │   │               ├──controllers
@@ -185,22 +51,88 @@ Preferably, we'd just fix the project structure to be like this:
                         └── SpringDebuggingDemoApplicationTests.java
 ```
 
-Now if we re-run our application in debug mode again, we should see us hitting
-the breakpoint when we send the GET request through Postman:
+Go ahead and run the `SpringDebuggingDemoApplication` in debug mode. Notice that
+everything seems to start up okay:
+
+![debug-console](https://curriculum-content.s3.amazonaws.com/spring-mod-1/debugging/debug-spring-console.png)
+
+Before we move on, open up the `DebugController` class in the
+`com.example.springdebuggingdemo.controllers` package:
+
+```java
+package com.example.springdebuggingdemo.controllers;
+
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+public class DebugController {
+
+    @GetMapping("/greet/{name}")
+    public String greet(String name) {
+        return String.format("Hello %s!", name);
+    }
+}
+```
+
+We might be able to see an issue here already. But let's just see what happens.
+
+It looks like there is only one URL path we can request from our application.
+Open up Postman and enter in "http://localhost:8080/greet/Ted" in the request
+URL. Don't forget to select "GET" to send the GET request.
+
+![postman-null-name](https://curriculum-content.s3.amazonaws.com/spring-mod-1/debugging/postman-name-null.png)
+
+Uh-oh. It looks like we have an issue. We're getting "Hello null!" back instead
+of "Hello Ted!" We might also see that there is no stack trace error in the
+console log either.
+
+Let's look back at the controller class. Go ahead and set a breakpoint on line
+10 with `return String.format("Hello %s!, name);` to see if it is even entering
+the method. As a review, in order to set a breakpoint, click anywhere in the open
+space to the right of the line number in the editor window - a red dot will
+appear to indicate that you successfully set a breakpoint on that line.
+
+If we send the GET request again, we'll see we are entering the method:
 
 ![hit-breakpoint](https://curriculum-content.s3.amazonaws.com/spring-mod-1/debugging/debug-hit-breakpoint.png)
 
-If we click the green play button off to the left-side menu of the debugger
-console to resume the program, we'll see that Postman no longer receives a 404
-error and that we get a 200 status back with the message "Welcome to Spring
-Boot!" in the response body.
+Notice that when we hit the breakpoint and look at the `name` variable, it is
+assigned to `null` instead of `Ted`, which is what we expected! Well, why might
+that be?
 
-![postman-200-status](https://curriculum-content.s3.amazonaws.com/spring-mod-1/debugging/postman-welcome-to-spring-boot.png)
+Look closer at the `greet()` method:
+
+```java
+    @GetMapping("/greet/{name}")
+    public String greet(String name) {
+        return String.format("Hello %s!", name);
+    }
+```
+
+The path variable `name` is not consumed! We need to add the `@PathVariable`
+annotation to our method like this:
+
+```java
+    @GetMapping("/greet/{name}")
+    public String greet(@PathVariable String name) {
+        return String.format("Hello %s!", name);
+    }
+```
+
+Let's re-run our application again in debug.
+
+If we send the same GET request to our application, we'll hit our breakpoint
+again:
+
+![hit-breakpoint-correct-name](https://curriculum-content.s3.amazonaws.com/spring-mod-1/debugging/debug-name-ted.png)
+
+We'll now see that the `name` variable is accurately set to `Ted` now. If we
+continue running the application, we'll see that it returns `Hello Ted!` now.
 
 ## Other Debugging Tips
 
 In the example above, we saw how to debug a bug that might not have been very
-obvious. We did not fully use the debugger to its full extent.
+obvious.
 
 Let's look at another example of how to use the debugger. This time, we'll refer
 back to the football team example we have been using.
@@ -214,6 +146,38 @@ When we hit the breakpoint, we can look in the debug console window to see
 exactly what was sent and if it matches what we expected:
 
 ![football-controller-console](https://curriculum-content.s3.amazonaws.com/spring-mod-1/debugging/debug-football-console.png)
+
+Other common issues include:
+
+- The path variable names are misspelled or different from each other.
+
+![misspelled-path-variable](https://curriculum-content.s3.amazonaws.com/spring-mod-1/debugging/debug-misspelled-path-variable.png)
+
+This could result in a warning:
+
+```text
+WARN 25306 --- [nio-8080-exec-4] .w.s.m.s.DefaultHandlerExceptionResolver : Resolved [org.springframework.web.bind.MissingPathVariableException: Required URI template variable 'names' for method parameter type String is not present]
+```
+
+- Using the wrong annotations to perform a request mapping.
+
+![wrong-annotation](https://curriculum-content.s3.amazonaws.com/spring-mod-1/debugging/debug-wrong-annotation.png)
+
+This could result in a warning:
+
+```text
+WARN 28814 --- [nio-8080-exec-2] .w.s.m.s.DefaultHandlerExceptionResolver : Resolved [org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'GET' not supported]
+```
+
+- Using a `@RequestParam` instead of a `@PathVariable` and vice versa.
+
+![requestparam-vs-pathvariable](https://curriculum-content.s3.amazonaws.com/spring-mod-1/debugging/debug-requestparam-instead-pathvariable.png)
+
+This could result in a warning:
+
+```text
+WARN 29881 --- [nio-8080-exec-1] .w.s.m.s.DefaultHandlerExceptionResolver : Resolved [org.springframework.web.bind.MissingServletRequestParameterException: Required request parameter 'name' for method parameter type String is not present]
+```
 
 ## Conclusion
 
