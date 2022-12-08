@@ -187,4 +187,5 @@ debugger tool in IntelliJ is not to be overlooked and can serve as an
 efficient and quick way to figure out what may be wrong. Using this in
 conjunction with Postman and the Java Visualizer tool will help in debugging
 and further understanding exactly what is happening in the Spring Boot
-application.
+application. Even though the Java Visualizer was not used in this lesson, it
+can still be used to help debug Java code, as seen in previous lessons.
